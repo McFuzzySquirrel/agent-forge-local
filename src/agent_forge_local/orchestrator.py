@@ -109,6 +109,18 @@ class Orchestrator:
         for task in self._execution_order(plan):
             await self._execute_task(ctx, task, coder, executor, validator, ejs_client)
 
+        # ----- Phase 3: Write session journey to EJS -----
+        if ejs_client is not None and self.config.ejs.write_enabled:
+            if ejs_client.db_exists:
+                ctx.log("Writing session journey to EJS database")
+                session_id = ejs_client.write_journey(ctx)
+                if session_id:
+                    ctx.log(f"Session journey written: {session_id}")
+                    logger.info("Session journey written to EJS: %s", session_id)
+                else:
+                    ctx.log("Failed to write session journey to EJS")
+                    logger.warning("Failed to write session journey to EJS")
+
         # ----- Cleanup -----
         if ejs_client is not None:
             ejs_client.close()

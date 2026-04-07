@@ -82,6 +82,7 @@ PRD (text/markdown)
       Executor         → writes files via Copilot CLI or directly
       Validator (local)→ pass / fail / needs_review
       ↻ retry if fail (up to max_retries)
+  → [session journey written back to .ejs.db if write_enabled]
   → summary
 ```
 
@@ -180,6 +181,7 @@ ejs:
   enabled: true          # Look for EJS database in target project
   db_name: ".ejs.db"     # Database filename (relative to working dir)
   context_limit: 4000    # Max characters of context per agent call
+  write_enabled: false   # Write session journey back to EJS at run completion
 ```
 
 Any model available in Ollama works. Swap freely based on your hardware:
@@ -249,12 +251,14 @@ When the target project has an EJS database (`.ejs.db`), the orchestrator:
 1. **At run start** — loads a compact summary of all ADRs (decisions, learnings, agent guidance)
 2. **Per task** — performs a targeted FTS5 search for content relevant to the specific task
 3. **Injects context** — passes the combined summary + search results to the Coder agent via the `existing_context` parameter
+4. **At run completion** — writes a session journey back to the database (when `write_enabled: true`) capturing task results, validator issues/suggestions, and guidance for future runs
 
 This means:
 - The Coder knows "the project uses FastAPI, not Flask" from ADR decisions
 - Past failed approaches are visible so the same mistakes aren't repeated
 - Agent guidance from previous sessions carries forward across runs
 - No context window is wasted — SQLite FTS5 enables selective retrieval
+- Each run's learnings feed back into the database for the next run (closed feedback loop)
 
 **Without EJS:** Everything still works. The orchestrator detects the database is missing and continues without project history — identical to the pre-EJS behavior.
 
@@ -323,7 +327,7 @@ This MVP is designed to help answer:
 - [ ] Compare results: same PRD through mcfuzzy-agent-forge (Copilot-native) vs agent-forge-local
 - [ ] Experiment log: document what works, what breaks, where small models fall short
 - [ ] Feed EJS context to the Planner agent (currently only the Coder receives it)
-- [ ] Write session journeys back to EJS at run completion (close the feedback loop)
+- [x] ~~Write session journeys back to EJS at run completion~~ — **Done**: Set `ejs.write_enabled: true` to persist run results, learnings, and guidance back to the EJS database
 
 ---
 

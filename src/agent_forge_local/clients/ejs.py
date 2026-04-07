@@ -1,9 +1,9 @@
-"""EJS (Engineering Journey System) client — reads the .ejs.db SQLite database for project context.
+"""EJS (Engineering Journey System) client — reads and writes the .ejs.db SQLite database.
 
 The EJS database stores ADRs (Architecture Decision Records) and Session Journeys
-in a SQLite database with FTS5 full-text search.  This client provides read-only
-access so that agents can query past decisions, learnings, and project history
-without reading every markdown file into the prompt.
+in a SQLite database with FTS5 full-text search.  This client provides read access
+so that agents can query past decisions, learnings, and project history, and
+optionally writes a session journey back at run completion to close the feedback loop.
 
 See: https://github.com/McFuzzySquirrel/Engineering-Journey-System
 """
@@ -13,7 +13,13 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from agent_forge_local.models.context import SharedContext
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +30,10 @@ _DEFAULT_CONTEXT_LIMIT = 4000
 
 
 class EjsClient:
-    """Read-only client for the EJS SQLite database.
+    """Client for the EJS SQLite database.
+
+    Supports read-only queries (ADR summaries, FTS5 search) and optionally
+    writing session journeys back at run completion.
 
     The database is expected to already exist (created by ``adr-db.py sync``).
     If the database is missing or empty, all methods return graceful defaults.
@@ -40,6 +49,7 @@ class EjsClient:
         self._db_path = Path(working_directory) / db_name
         self._context_limit = context_limit
         self._conn: sqlite3.Connection | None = None
+        self._write_conn: sqlite3.Connection | None = None
 
     # ------------------------------------------------------------------
     # Connection management
@@ -71,11 +81,37 @@ class EjsClient:
 
         return self._conn
 
+    def _connect_writable(self) -> sqlite3.Connection | None:
+        """Open a writable connection (lazy, cached)."""
+        if self._write_conn is not None:
+            return self._write_conn
+
+        if not self.db_exists:
+            logger.debug("EJS database not found at %s — cannot write", self._db_path)
+            return None
+
+        try:
+            self._write_conn = sqlite3.connect(str(self._db_path))
+            self._write_conn.row_factory = sqlite3.Row
+            logger.info("Opened writable connection to EJS database at %s", self._db_path)
+        except sqlite3.Error:
+            logger.warning(
+                "Failed to open EJS database for writing at %s",
+                self._db_path,
+                exc_info=True,
+            )
+            return None
+
+        return self._write_conn
+
     def close(self) -> None:
-        """Close the database connection if open."""
+        """Close the database connections if open."""
         if self._conn is not None:
             self._conn.close()
             self._conn = None
+        if self._write_conn is not None:
+            self._write_conn.close()
+            self._write_conn = None
 
     # ------------------------------------------------------------------
     # Query helpers
@@ -209,6 +245,147 @@ class EjsClient:
 
         text = "\n\n".join(sections)
         return text[: self._context_limit]
+
+    # ------------------------------------------------------------------
+    # Write API — session journey persistence
+    # ------------------------------------------------------------------
+
+    def write_journey(self, ctx: SharedContext) -> str | None:
+        """Write a session journey entry derived from a completed run.
+
+        Extracts the run's goal, task results, learnings, and agent guidance
+        from the :class:`SharedContext` and inserts a new row into the
+        ``journeys`` table.  FTS5 triggers (if present) will automatically
+        index the new row.
+
+        Returns the generated ``session_id`` on success, or ``None`` if the
+        write was skipped (e.g. database missing, table absent, error).
+        """
+        conn = self._connect_writable()
+        if conn is None:
+            return None
+
+        if not self._has_table(conn, "journeys"):
+            logger.warning("EJS database has no 'journeys' table — skipping write")
+            return None
+
+        session_id = f"agent-forge-{uuid.uuid4().hex[:12]}"
+        date = datetime.now(UTC).strftime("%Y-%m-%d")
+
+        journey = _build_journey_from_context(ctx, session_id=session_id, date=date)
+
+        try:
+            conn.execute(
+                "INSERT INTO journeys "
+                "(session_id, author, date, repo, branch, agents_involved, "
+                "problem_intent, interaction_summary, decisions_made, "
+                "key_learnings, future_agent_guidance) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    journey["session_id"],
+                    journey["author"],
+                    journey["date"],
+                    journey["repo"],
+                    journey["branch"],
+                    journey["agents_involved"],
+                    journey["problem_intent"],
+                    journey["interaction_summary"],
+                    journey["decisions_made"],
+                    journey["key_learnings"],
+                    journey["future_agent_guidance"],
+                ),
+            )
+            conn.commit()
+            logger.info("Wrote session journey %s to EJS database", session_id)
+        except sqlite3.Error:
+            logger.warning("Failed to write journey to EJS database", exc_info=True)
+            return None
+
+        return session_id
+
+
+# ---------------------------------------------------------------------------
+# Journey builder — extract structured fields from a SharedContext
+# ---------------------------------------------------------------------------
+
+
+def _build_journey_from_context(
+    ctx: SharedContext,
+    *,
+    session_id: str,
+    date: str,
+) -> dict[str, str]:
+    """Map a completed :class:`SharedContext` to EJS journey fields."""
+    from agent_forge_local.models.tasks import ValidationVerdict
+
+    # Goal / intent
+    goal = ctx.plan.goal if ctx.plan else "PRD execution"
+    problem_intent = f"{goal}\n\nPRD excerpt: {ctx.prd_text[:500]}"
+
+    # Interaction summary — compact per-task results
+    summary_parts: list[str] = []
+    for task_id, state in ctx.task_states.items():
+        verdict = state.validation.verdict.value if state.validation else "no validation"
+        title = ""
+        if ctx.plan:
+            for t in ctx.plan.tasks:
+                if t.id == task_id:
+                    title = t.title
+                    break
+        summary_parts.append(f"- {task_id} ({title}): {verdict} after {state.attempts} attempt(s)")
+    interaction_summary = "\n".join(summary_parts) if summary_parts else "No tasks executed"
+
+    # Decisions — which tasks passed / failed
+    passed: list[str] = []
+    failed: list[str] = []
+    for task_id, state in ctx.task_states.items():
+        if state.validation and state.validation.verdict == ValidationVerdict.PASS:
+            passed.append(task_id)
+        else:
+            failed.append(task_id)
+
+    decisions_parts: list[str] = []
+    if passed:
+        decisions_parts.append(f"Passed: {', '.join(passed)}")
+    if failed:
+        decisions_parts.append(f"Failed/needs review: {', '.join(failed)}")
+    decisions_made = "\n".join(decisions_parts) if decisions_parts else "No decisions recorded"
+
+    # Key learnings — aggregate validator issues and suggestions
+    issues: list[str] = []
+    suggestions: list[str] = []
+    for state in ctx.task_states.values():
+        if state.validation:
+            issues.extend(state.validation.issues)
+            suggestions.extend(state.validation.suggestions)
+
+    learnings_parts: list[str] = []
+    if issues:
+        learnings_parts.append("Issues encountered:\n" + "\n".join(f"- {i}" for i in issues))
+    if suggestions:
+        learnings_parts.append("Suggestions:\n" + "\n".join(f"- {s}" for s in suggestions))
+    key_learnings = "\n\n".join(learnings_parts) if learnings_parts else "No issues or suggestions"
+
+    # Future agent guidance
+    total = len(ctx.task_states)
+    pass_count = len(passed)
+    future_agent_guidance = f"Run completed {pass_count}/{total} tasks successfully. Goal: {goal}"
+    if failed:
+        future_agent_guidance += f"\nFailed tasks ({', '.join(failed)}) may need manual review."
+
+    return {
+        "session_id": session_id,
+        "author": "agent-forge-local",
+        "date": date,
+        "repo": ctx.working_directory,
+        "branch": "",
+        "agents_involved": "planner, coder, executor, validator",
+        "problem_intent": problem_intent,
+        "interaction_summary": interaction_summary,
+        "decisions_made": decisions_made,
+        "key_learnings": key_learnings,
+        "future_agent_guidance": future_agent_guidance,
+    }
 
 
 # ---------------------------------------------------------------------------

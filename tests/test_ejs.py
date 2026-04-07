@@ -4,7 +4,20 @@ import sqlite3
 
 import pytest
 
-from agent_forge_local.clients.ejs import EjsClient, _sanitise_fts_query
+from agent_forge_local.clients.ejs import (
+    EjsClient,
+    _build_journey_from_context,
+    _sanitise_fts_query,
+)
+from agent_forge_local.models.context import SharedContext
+from agent_forge_local.models.tasks import (
+    CodeOutput,
+    ExecutionResult,
+    PlannedTask,
+    TaskPlan,
+    ValidationResult,
+    ValidationVerdict,
+)
 
 # ---------------------------------------------------------------------------
 # FTS query sanitisation
@@ -280,3 +293,229 @@ class TestEjsClientWithData:
     def test_close_idempotent(self, client):
         client.close()
         client.close()  # Should not raise
+
+
+# ---------------------------------------------------------------------------
+# Helpers — build a SharedContext with task states for write tests
+# ---------------------------------------------------------------------------
+
+
+def _make_context(
+    *,
+    goal: str = "Build a hello world app",
+    prd_text: str = "Create a simple greeting CLI tool",
+    working_directory: str = "/tmp/test-project",
+    tasks: list[dict] | None = None,
+) -> SharedContext:
+    """Create a SharedContext populated with task results for testing."""
+    ctx = SharedContext(prd_text=prd_text, working_directory=working_directory)
+
+    if tasks is None:
+        tasks = [
+            {
+                "id": "task-01",
+                "title": "Create greeter module",
+                "verdict": ValidationVerdict.PASS,
+                "issues": [],
+                "suggestions": ["Add type hints"],
+                "attempts": 1,
+            },
+            {
+                "id": "task-02",
+                "title": "Add CLI entry point",
+                "verdict": ValidationVerdict.FAIL,
+                "issues": ["Missing argument parser"],
+                "suggestions": ["Use argparse"],
+                "attempts": 2,
+            },
+        ]
+
+    planned = []
+    for t in tasks:
+        planned.append(
+            PlannedTask(
+                id=t["id"],
+                title=t["title"],
+                description=f"Implement {t['title']}",
+                files=[f"{t['id']}.py"],
+            )
+        )
+        state = ctx.get_task_state(t["id"])
+        state.attempts = t.get("attempts", 1)
+        state.code = CodeOutput(task_id=t["id"], files={f"{t['id']}.py": "# code"})
+        state.execution = ExecutionResult(
+            task_id=t["id"], success=True, method="direct_write", files_written=[f"{t['id']}.py"]
+        )
+        state.validation = ValidationResult(
+            task_id=t["id"],
+            verdict=t["verdict"],
+            issues=t.get("issues", []),
+            suggestions=t.get("suggestions", []),
+        )
+
+    ctx.plan = TaskPlan(goal=goal, tasks=planned)
+    return ctx
+
+
+# ---------------------------------------------------------------------------
+# Journey builder unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestBuildJourneyFromContext:
+    def test_basic_fields(self):
+        ctx = _make_context()
+        journey = _build_journey_from_context(ctx, session_id="test-001", date="2026-04-07")
+
+        assert journey["session_id"] == "test-001"
+        assert journey["author"] == "agent-forge-local"
+        assert journey["date"] == "2026-04-07"
+        assert journey["repo"] == "/tmp/test-project"
+        assert "planner" in journey["agents_involved"]
+
+    def test_problem_intent_includes_goal_and_prd(self):
+        ctx = _make_context(goal="Build CLI tool", prd_text="A simple CLI tool for greetings")
+        journey = _build_journey_from_context(ctx, session_id="s1", date="2026-01-01")
+
+        assert "Build CLI tool" in journey["problem_intent"]
+        assert "simple CLI tool" in journey["problem_intent"]
+
+    def test_interaction_summary_lists_tasks(self):
+        ctx = _make_context()
+        journey = _build_journey_from_context(ctx, session_id="s1", date="2026-01-01")
+
+        assert "task-01" in journey["interaction_summary"]
+        assert "task-02" in journey["interaction_summary"]
+        assert "pass" in journey["interaction_summary"]
+        assert "fail" in journey["interaction_summary"]
+
+    def test_decisions_made_separates_pass_fail(self):
+        ctx = _make_context()
+        journey = _build_journey_from_context(ctx, session_id="s1", date="2026-01-01")
+
+        assert "Passed: task-01" in journey["decisions_made"]
+        assert "Failed/needs review: task-02" in journey["decisions_made"]
+
+    def test_key_learnings_includes_issues_and_suggestions(self):
+        ctx = _make_context()
+        journey = _build_journey_from_context(ctx, session_id="s1", date="2026-01-01")
+
+        assert "Missing argument parser" in journey["key_learnings"]
+        assert "Add type hints" in journey["key_learnings"]
+        assert "Use argparse" in journey["key_learnings"]
+
+    def test_future_guidance_includes_summary(self):
+        ctx = _make_context()
+        journey = _build_journey_from_context(ctx, session_id="s1", date="2026-01-01")
+
+        assert "1/2 tasks successfully" in journey["future_agent_guidance"]
+        assert "task-02" in journey["future_agent_guidance"]
+
+    def test_all_passed(self):
+        ctx = _make_context(
+            tasks=[
+                {"id": "task-01", "title": "Only task", "verdict": ValidationVerdict.PASS},
+            ]
+        )
+        journey = _build_journey_from_context(ctx, session_id="s1", date="2026-01-01")
+
+        assert "1/1 tasks successfully" in journey["future_agent_guidance"]
+        assert "Failed" not in journey["future_agent_guidance"]
+        assert "Passed: task-01" in journey["decisions_made"]
+
+    def test_no_tasks(self):
+        ctx = _make_context(tasks=[])
+        journey = _build_journey_from_context(ctx, session_id="s1", date="2026-01-01")
+
+        assert journey["interaction_summary"] == "No tasks executed"
+        assert journey["decisions_made"] == "No decisions recorded"
+
+
+# ---------------------------------------------------------------------------
+# Write journey integration tests
+# ---------------------------------------------------------------------------
+
+
+class TestWriteJourney:
+    """Tests for writing session journeys back to the EJS database."""
+
+    def test_write_journey_success(self, tmp_path):
+        _create_test_db(tmp_path / ".ejs.db")
+        client = EjsClient(str(tmp_path))
+        ctx = _make_context()
+
+        session_id = client.write_journey(ctx)
+
+        assert session_id is not None
+        assert session_id.startswith("agent-forge-")
+
+        # Verify the row was actually inserted
+        conn = sqlite3.connect(str(tmp_path / ".ejs.db"))
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM journeys WHERE session_id = ?", (session_id,)).fetchone()
+        conn.close()
+
+        assert row is not None
+        assert row["author"] == "agent-forge-local"
+        assert "task-01" in row["interaction_summary"]
+        assert "Build a hello world app" in row["problem_intent"]
+        client.close()
+
+    def test_write_journey_no_db(self, tmp_path):
+        client = EjsClient(str(tmp_path))
+        ctx = _make_context()
+
+        result = client.write_journey(ctx)
+        assert result is None
+
+    def test_write_journey_empty_db(self, tmp_path):
+        _create_test_db(tmp_path / ".ejs.db")
+        client = EjsClient(str(tmp_path))
+        ctx = _make_context()
+
+        session_id = client.write_journey(ctx)
+        assert session_id is not None
+        client.close()
+
+    def test_written_journey_searchable_via_fts(self, tmp_path):
+        """A written journey should be findable via FTS5 search."""
+        _create_test_db(tmp_path / ".ejs.db")
+        client = EjsClient(str(tmp_path))
+        ctx = _make_context(goal="Implement authentication system")
+
+        session_id = client.write_journey(ctx)
+        assert session_id is not None
+
+        # Close write connection, re-open for reading
+        client.close()
+        client = EjsClient(str(tmp_path))
+        result = client.search("authentication")
+        assert session_id in result
+        client.close()
+
+    def test_write_journey_no_journeys_table(self, tmp_path):
+        """Gracefully handle a database without the journeys table."""
+        db_path = tmp_path / ".ejs.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("CREATE TABLE adrs (adr_id TEXT PRIMARY KEY)")
+        conn.close()
+
+        client = EjsClient(str(tmp_path))
+        ctx = _make_context()
+
+        result = client.write_journey(ctx)
+        assert result is None
+        client.close()
+
+    def test_close_closes_both_connections(self, tmp_path):
+        _create_test_db(tmp_path / ".ejs.db")
+        client = EjsClient(str(tmp_path))
+
+        # Trigger both connections
+        client.summary()
+        ctx = _make_context()
+        client.write_journey(ctx)
+
+        client.close()
+        assert client._conn is None
+        assert client._write_conn is None

@@ -26,3 +26,4 @@ ejs:
   enabled: true                # set to false to skip EJS context loading
   db_name: ".ejs.db"           # EJS database filename (relative to working dir)
   context_limit: 4000          # max characters of EJS context per agent call
+  write_enabled: false         # write a session journey back to EJS at run completion
