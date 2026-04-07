@@ -17,3 +17,12 @@ ollama:
 orchestrator:
   max_retries: 2               # retry failed tasks up to N extra times
   continue_on_failure: false   # stop on first failure, or keep going?
+
+# Engineering Journey System (EJS) — persistent project memory
+# If your project uses EJS (https://github.com/McFuzzySquirrel/Engineering-Journey-System)
+# the orchestrator will query its SQLite database for past decisions, learnings,
+# and session history, injecting relevant context into agent prompts.
+ejs:
+  enabled: true                # set to false to skip EJS context loading
+  db_name: ".ejs.db"           # EJS database filename (relative to working dir)
+  context_limit: 4000          # max characters of EJS context per agent call

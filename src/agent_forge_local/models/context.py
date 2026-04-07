@@ -52,6 +52,12 @@ class SharedContext(BaseModel):
     )
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    # EJS context (populated by orchestrator when an EJS database is available)
+    ejs_context: str = Field(
+        default="",
+        description="Project context loaded from the EJS database (ADR summaries, search results)",
+    )
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
