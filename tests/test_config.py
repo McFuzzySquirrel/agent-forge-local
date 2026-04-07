@@ -14,6 +14,7 @@ class TestConfig:
         assert cfg.models.validator == "phi4:latest"
         assert cfg.ollama.base_url == "http://localhost:11434"
         assert cfg.orchestrator.max_retries == 2
+        assert cfg.ejs.write_enabled is False
 
     def test_load_missing_file(self, tmp_path):
         cfg = load_config(tmp_path / "nonexistent.yaml")

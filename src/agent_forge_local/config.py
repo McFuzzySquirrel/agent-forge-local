@@ -58,6 +58,10 @@ class EjsSettings(BaseModel):
         default=4000,
         description="Maximum characters of EJS context to inject per agent call",
     )
+    write_enabled: bool = Field(
+        default=False,
+        description="Write a session journey back to the EJS database at run completion",
+    )
 
 
 class Config(BaseModel):
