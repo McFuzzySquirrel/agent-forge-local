@@ -143,8 +143,9 @@ class OllamaClient:
                     raise ValueError(
                         f"Model {model} failed to produce valid JSON after 2 attempts. "
                         f"Raw output:\n{raw[:500]}"
-                    )
-        raise AssertionError("unreachable")  # pragma: no cover
+                    ) from None
+        # The loop always returns or raises, but this satisfies type checkers
+        raise RuntimeError("unreachable")  # pragma: no cover
 
 
 def _extract_json(text: str) -> str:

@@ -21,6 +21,8 @@ from agent_forge_local.models.tasks import (
 
 logger = logging.getLogger(__name__)
 
+_FILE_CONTENT_PREVIEW_LIMIT = 3000
+
 
 class Orchestrator:
     """Coordinates the local agent swarm through the full build loop.
@@ -105,8 +107,9 @@ class Orchestrator:
         """Run the Code → Execute → Validate loop for a single task."""
         max_retries = self.config.orchestrator.max_retries
         state = ctx.get_task_state(task.id)
+        total_attempts = max_retries + 1  # 1 initial attempt + max_retries
 
-        for attempt in range(1, max_retries + 2):  # +2 because range is exclusive
+        for attempt in range(1, total_attempts + 1):
             state.attempts = attempt
             ctx.log(f"Task {task.id} attempt {attempt}: coding …")
             logger.info("[%s] attempt %d — coding", task.id, attempt)
@@ -135,7 +138,9 @@ class Orchestrator:
                 abs_path = Path(ctx.working_directory) / rel_path
                 if abs_path.is_file():
                     try:
-                        file_contents[rel_path] = abs_path.read_text(encoding="utf-8")[:3000]
+                        file_contents[rel_path] = abs_path.read_text(encoding="utf-8")[
+                            :_FILE_CONTENT_PREVIEW_LIMIT
+                        ]
                     except Exception:
                         file_contents[rel_path] = "<read error>"
 
