@@ -1,0 +1,19 @@
+# Agent Forge Local — Configuration
+# ===================================
+# Assign which Ollama model backs each agent role.
+# These are the recommended models for the experiment;
+# swap them for any model available in your local Ollama.
+
+models:
+  planner: "llama3.3:8b"       # Structured reasoning, plan decomposition
+  coder: "qwen3:7b"            # Code generation
+  executor: "mistral:7b"       # Instruction following, Copilot CLI formatting
+  validator: "phi4:latest"     # Evaluation, pass/fail judgments
+
+ollama:
+  base_url: "http://localhost:11434"
+  timeout: 120.0               # seconds per model call
+
+orchestrator:
+  max_retries: 2               # retry failed tasks up to N extra times
+  continue_on_failure: false   # stop on first failure, or keep going?
