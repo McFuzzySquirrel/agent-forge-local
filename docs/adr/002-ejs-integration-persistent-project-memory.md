@@ -99,5 +99,5 @@ Make the EJS database module a pip package and import it.
 ### Future Work
 
 - Feed EJS context to the Planner agent for history-aware task decomposition
-- Write session journeys back to EJS at run completion (close the feedback loop)
+- ~~Write session journeys back to EJS at run completion (close the feedback loop)~~ → **Done in [ADR-003](003-ejs-write-back-closing-the-feedback-loop.md)**
 - Auto-sync the database at run start if `adr-db.py` is detected in the working directory
