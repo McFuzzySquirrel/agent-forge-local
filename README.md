@@ -50,7 +50,15 @@ This means:
   ┌───────────────────────────────────────┐
   │          Shared Context (JSON)        │
   │  plan → code → execution → validation│
-  └───────────────────────────────────────┘
+  └───────────────────┬───────────────────┘
+                      │
+              ┌───────▼───────┐
+              │  EJS Database │
+              │  (.ejs.db)    │
+              │  ADRs, Session│
+              │  Journeys,    │
+              │  FTS5 Search  │
+              └───────────────┘
 ```
 
 ### Agent Roles
@@ -66,8 +74,10 @@ This means:
 
 ```
 PRD (text/markdown)
+  → [EJS context loaded from .ejs.db if available]
   → Planner (local)    → TaskPlan (structured JSON)
   → for each task:
+      [EJS search for task-relevant decisions/history]
       Coder (local)    → CodeOutput (file contents)
       Executor         → writes files via Copilot CLI or directly
       Validator (local)→ pass / fail / needs_review
@@ -90,6 +100,8 @@ ollama pull phi4:latest
 ```
 
 3. **(Optional)** [GitHub CLI](https://cli.github.com/) with Copilot extension for repo-aware execution. Without it, the system falls back to direct file writes — everything still works.
+
+4. **(Optional)** [Engineering Journey System](https://github.com/McFuzzySquirrel/Engineering-Journey-System) for persistent project memory. If your target project has an EJS database (`.ejs.db`), agents will automatically receive past decisions, learnings, and session history as context.
 
 ---
 
@@ -163,6 +175,11 @@ ollama:
 orchestrator:
   max_retries: 2
   continue_on_failure: false
+
+ejs:
+  enabled: true          # Look for EJS database in target project
+  db_name: ".ejs.db"     # Database filename (relative to working dir)
+  context_limit: 4000    # Max characters of context per agent call
 ```
 
 Any model available in Ollama works. Swap freely based on your hardware:
@@ -195,7 +212,8 @@ agent-forge-local/
 │   │   └── validator.py         # Execution → pass/fail verdict
 │   ├── clients/
 │   │   ├── ollama.py            # Ollama HTTP client
-│   │   └── copilot.py           # Copilot CLI bridge
+│   │   ├── copilot.py           # Copilot CLI bridge
+│   │   └── ejs.py               # EJS database client (project context)
 │   └── models/
 │       ├── tasks.py             # PlannedTask, CodeOutput, ValidationResult, etc.
 │       └── context.py           # SharedContext — the state all agents share
@@ -220,7 +238,34 @@ Agents don't pass free-form text to each other. Every handoff uses **typed Pydan
 - `ExecutionResult` — Executor output: which files were written, stdout/stderr
 - `ValidationResult` — Validator output: pass/fail/needs_review + issues + suggestions
 
-The `SharedContext` holds everything for the run: the PRD, the plan, per-task state, and a timestamped log.
+The `SharedContext` holds everything for the run: the PRD, the plan, per-task state, a timestamped log, and any EJS context loaded from the project.
+
+### EJS Integration — Persistent Project Memory
+
+The [Engineering Journey System (EJS)](https://github.com/McFuzzySquirrel/Engineering-Journey-System) solves the **context problem**: agents starting each run with zero knowledge of the project's history, past decisions, and learnings.
+
+When the target project has an EJS database (`.ejs.db`), the orchestrator:
+
+1. **At run start** — loads a compact summary of all ADRs (decisions, learnings, agent guidance)
+2. **Per task** — performs a targeted FTS5 search for content relevant to the specific task
+3. **Injects context** — passes the combined summary + search results to the Coder agent via the `existing_context` parameter
+
+This means:
+- The Coder knows "the project uses FastAPI, not Flask" from ADR decisions
+- Past failed approaches are visible so the same mistakes aren't repeated
+- Agent guidance from previous sessions carries forward across runs
+- No context window is wasted — SQLite FTS5 enables selective retrieval
+
+**Without EJS:** Everything still works. The orchestrator detects the database is missing and continues without project history — identical to the pre-EJS behavior.
+
+**To enable EJS context in your target project:**
+```bash
+# From the EJS starter repo
+./scripts/bootstrap-ejs.sh /path/to/your-project
+
+# Then sync the database before running agent-forge-local
+python /path/to/your-project/scripts/adr-db.py sync
+```
 
 ### Topological Task Ordering
 
@@ -274,15 +319,18 @@ This MVP is designed to help answer:
 
 - [ ] Add progress file output (`docs/PROGRESS.md` compat with mcfuzzy-agent-forge)
 - [ ] Support multi-phase PRDs (Phase 1, Phase 2, …)
-- [ ] Add context extraction — have Copilot CLI read existing project files to feed local models
+- [x] ~~Add context extraction~~ — **Done**: EJS integration provides persistent project memory via SQLite
 - [ ] Compare results: same PRD through mcfuzzy-agent-forge (Copilot-native) vs agent-forge-local
 - [ ] Experiment log: document what works, what breaks, where small models fall short
+- [ ] Feed EJS context to the Planner agent (currently only the Coder receives it)
+- [ ] Write session journeys back to EJS at run completion (close the feedback loop)
 
 ---
 
 ## Related
 
 - [mcfuzzy-agent-forge](https://github.com/McFuzzySquirrel/mcfuzzy-agent-forge) — The Copilot-native version: PRD → agent team → orchestrated build, all inside GitHub Copilot
+- [Engineering-Journey-System](https://github.com/McFuzzySquirrel/Engineering-Journey-System) — Persistent project memory: ADRs, session journeys, and a SQLite-backed index for agent context
 - [Copilot CLI BYOK announcement](https://github.blog/changelog/2026-04-07-copilot-cli-now-supports-byok-and-local-models/) — The announcement that sparked this experiment
 
 ---

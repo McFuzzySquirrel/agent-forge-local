@@ -10,6 +10,7 @@ from agent_forge_local.agents.executor import ExecutorAgent
 from agent_forge_local.agents.planner import PlannerAgent
 from agent_forge_local.agents.validator import ValidatorAgent
 from agent_forge_local.clients.copilot import CopilotCLI
+from agent_forge_local.clients.ejs import EjsClient
 from agent_forge_local.clients.ollama import OllamaClient
 from agent_forge_local.config import Config
 from agent_forge_local.models.context import SharedContext
@@ -67,6 +68,34 @@ class Orchestrator:
         executor = ExecutorAgent(self.config.models.executor, self.ollama, copilot)
         validator = ValidatorAgent(self.config.models.validator, self.ollama)
 
+        # ----- Load EJS context (persistent project memory) -----
+        ejs_client: EjsClient | None = None
+        if self.config.ejs.enabled:
+            ejs_client = EjsClient(
+                working_directory,
+                db_name=self.config.ejs.db_name,
+                context_limit=self.config.ejs.context_limit,
+            )
+            if ejs_client.db_exists:
+                ejs_summary = ejs_client.summary()
+                if ejs_summary:
+                    ctx.ejs_context = ejs_summary
+                    ctx.log(
+                        f"EJS context loaded ({len(ejs_summary)} chars "
+                        f"from {self.config.ejs.db_name})"
+                    )
+                    logger.info(
+                        "EJS context loaded: %d chars from %s",
+                        len(ejs_summary),
+                        self.config.ejs.db_name,
+                    )
+                else:
+                    ctx.log("EJS database found but contains no data")
+                    logger.info("EJS database found but contains no data")
+            else:
+                ctx.log("No EJS database found — running without project history context")
+                logger.info("No EJS database at %s", ejs_client._db_path)
+
         # ----- Phase 1: Plan -----
         ctx.log("Phase 1 — Planning")
         logger.info("Phase 1: Planning …")
@@ -78,7 +107,11 @@ class Orchestrator:
         # ----- Phase 2: Execute tasks -----
         ctx.log("Phase 2 — Executing tasks")
         for task in self._execution_order(plan):
-            await self._execute_task(ctx, task, coder, executor, validator)
+            await self._execute_task(ctx, task, coder, executor, validator, ejs_client)
+
+        # ----- Cleanup -----
+        if ejs_client is not None:
+            ejs_client.close()
 
         # ----- Summary -----
         passed = sum(
@@ -103,11 +136,24 @@ class Orchestrator:
         coder: CoderAgent,
         executor: ExecutorAgent,
         validator: ValidatorAgent,
+        ejs_client: EjsClient | None = None,
     ) -> None:
         """Run the Code → Execute → Validate loop for a single task."""
         max_retries = self.config.orchestrator.max_retries
         state = ctx.get_task_state(task.id)
         total_attempts = max_retries + 1  # 1 initial attempt + max_retries
+
+        # Build EJS context for this specific task
+        existing_context = ""
+        if ejs_client is not None:
+            existing_context = ejs_client.context_for_task(task.title, task.description)
+            if existing_context:
+                logger.debug(
+                    "[%s] EJS context: %d chars for task '%s'",
+                    task.id,
+                    len(existing_context),
+                    task.title,
+                )
 
         for attempt in range(1, total_attempts + 1):
             state.attempts = attempt
@@ -120,6 +166,7 @@ class Orchestrator:
                 task_title=task.title,
                 task_description=task.description,
                 target_files=task.files,
+                existing_context=existing_context,
             )
             state.code = code
 

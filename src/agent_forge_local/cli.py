@@ -80,6 +80,8 @@ async def _async_main(args: argparse.Namespace) -> int:
         f"🧠 Models: planner={config.models.planner}  coder={config.models.coder}  "
         f"executor={config.models.executor}  validator={config.models.validator}"
     )
+    if config.ejs.enabled:
+        print(f"📚 EJS context: enabled (db={config.ejs.db_name})")
     print()
 
     orchestrator = Orchestrator(config)

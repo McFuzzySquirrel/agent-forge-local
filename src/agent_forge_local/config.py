@@ -36,12 +36,37 @@ class OrchestratorSettings(BaseModel):
     )
 
 
+class EjsSettings(BaseModel):
+    """Settings for the Engineering Journey System (EJS) context provider.
+
+    When enabled and a ``.ejs.db`` database exists in the working directory,
+    the orchestrator queries it for past decisions, learnings, and project
+    history and injects relevant context into agent prompts.
+
+    See: https://github.com/McFuzzySquirrel/Engineering-Journey-System
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Whether to look for and use an EJS database for context",
+    )
+    db_name: str = Field(
+        default=".ejs.db",
+        description="Filename of the EJS SQLite database (relative to working directory)",
+    )
+    context_limit: int = Field(
+        default=4000,
+        description="Maximum characters of EJS context to inject per agent call",
+    )
+
+
 class Config(BaseModel):
     """Root configuration object."""
 
     models: ModelAssignment = Field(default_factory=ModelAssignment)
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
     orchestrator: OrchestratorSettings = Field(default_factory=OrchestratorSettings)
+    ejs: EjsSettings = Field(default_factory=EjsSettings)
 
 
 def load_config(path: str | Path | None = None) -> Config:
