@@ -10,7 +10,6 @@ build/
 *.log
 .venv/
 venv/
-.ejs.db
 .ejs-session-active
 .ejs-session-incomplete
 logs/*.jsonl
