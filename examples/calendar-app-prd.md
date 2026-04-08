@@ -11,7 +11,7 @@
 
 Build a **React-based calendar management application** that lets users create,
 view, edit, and delete events. The app should support day, week, and month
-views, recurring events, and colour-coded event categories.
+views, recurring events, and color-coded event categories.
 
 This is a single-page application (SPA) bootstrapped with Vite + React 18 and
 written in TypeScript.
@@ -35,7 +35,7 @@ written in TypeScript.
 ### 2. Event Management (CRUD)
 
 - **Create**: Click on a time slot or day cell to open an "Add Event" modal.
-- **Read**: Events render as coloured chips on the calendar grid.
+- **Read**: Events render as colored chips on the calendar grid.
 - **Update**: Click an existing event chip to open a pre-filled "Edit Event"
   modal.
 - **Delete**: The edit modal includes a "Delete" button with a confirmation
@@ -54,7 +54,7 @@ Each event has:
 | `endTime`     | `ISO 8601 datetime` | Required, must be after `startTime`      |
 | `category`    | `enum`              | One of: `work`, `personal`, `health`, `social`, `other` |
 | `recurrence`  | `enum \| null`      | `daily`, `weekly`, `monthly`, or `null`  |
-| `color`       | `string`            | Hex colour auto-assigned from category   |
+| `color`       | `string`            | Hex color auto-assigned from category    |
 
 ### 4. Recurring Events
 
@@ -65,9 +65,9 @@ Each event has:
 - Deleting a recurring event should ask "Delete this occurrence" or "Delete
   all".
 
-### 5. Category Colour Mapping
+### 5. Category Color Mapping
 
-| Category   | Default Colour |
+| Category   | Default Color  |
 |------------|----------------|
 | work       | `#4A90D9`      |
 | personal   | `#7B68EE`      |
@@ -133,12 +133,12 @@ calendar-app/
 │   │   ├── MonthView.tsx               — Month grid
 │   │   ├── WeekView.tsx                — Week grid with time slots
 │   │   ├── DayView.tsx                 — Day grid with time slots
-│   │   ├── EventChip.tsx               — Coloured event chip rendered in cells
+│   │   ├── EventChip.tsx               — Colored event chip rendered in cells
 │   │   ├── EventModal.tsx              — Add / Edit event form modal
 │   │   └── ConfirmDialog.tsx           — Reusable confirmation dialog
 │   ├── utils/
 │   │   ├── dateHelpers.ts              — Wrappers around date-fns
-│   │   └── categoryColors.ts           — Category → colour map
+│   │   └── categoryColors.ts           — Category → color map
 │   └── styles/
 │       ├── App.module.css
 │       ├── CalendarHeader.module.css
