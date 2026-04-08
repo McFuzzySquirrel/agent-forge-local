@@ -126,23 +126,23 @@ pip install -e ".[dev]"
 ### 1. Write a PRD (or use the example)
 
 ```bash
-cat examples/hello-world-prd.md
+cat examples/calendar-app-prd.md
 ```
 
 ### 2. Run the agent swarm
 
 ```bash
 # Create a target directory for the output
-mkdir /tmp/hello-project
+mkdir /tmp/calendar-app
 
 # Run it
-agent-forge-local examples/hello-world-prd.md -d /tmp/hello-project -v
+agent-forge-local examples/calendar-app-prd.md -d /tmp/calendar-app -v
 ```
 
 ### 3. Check the results
 
 ```bash
-ls /tmp/hello-project/
+ls /tmp/calendar-app/
 ```
 
 ### CLI Options
@@ -221,7 +221,7 @@ agent-forge-local/
 │       └── context.py           # SharedContext — the state all agents share
 ├── tests/                       # Unit tests
 ├── examples/
-│   └── hello-world-prd.md       # Example PRD to test with
+│   └── calendar-app-prd.md      # Example PRD to test with
 ├── config.yaml                  # Default configuration
 ├── pyproject.toml               # Package definition
 └── README.md
