@@ -12,6 +12,7 @@ INPUT="$(cat)"
 TIMESTAMP="$(echo "$INPUT" | jq -r '.timestamp // empty' 2>/dev/null || true)"
 AGENT_NAME="$(echo "$INPUT" | jq -r '.agentName // .agent_name // "unknown"' 2>/dev/null || true)"
 TASK_DESC="$(echo "$INPUT" | jq -r '.taskDescription // .task // ""' 2>/dev/null || true)"
+AGENT_MESSAGE="$(echo "$INPUT" | jq -r '.message // .summary // .result // .output // ""' 2>/dev/null || true)"
 
 # Format timestamp for human readability (portable: GNU date -d vs BSD date -r)
 _epoch_to_iso() {
@@ -75,8 +76,8 @@ jq -n \
 # --- 5. Emit to visualizer (best-effort — does not affect hook outcome) ---
 SESSION_ID_VIZ="$(basename "$JOURNEY_FILE" .md)"
 if [ -x "$REPO_ROOT/.visualizer/emit-event.sh" ]; then
-  VIZ_PAYLOAD=$(jq -nc --arg agentName "$AGENT_NAME" --arg task "$TASK_DESC" \
-    '{"agentName":$agentName,"taskDescription":$task}' 2>/dev/null || echo '{}')
+  VIZ_PAYLOAD=$(jq -nc --arg agentName "$AGENT_NAME" --arg task "$TASK_DESC" --arg message "$AGENT_MESSAGE" \
+    '{"agentName":$agentName,"taskDescription":$task,"message":$message,"summary":$message,"result":$message}' 2>/dev/null || echo '{}')
   "$REPO_ROOT/.visualizer/emit-event.sh" subagentStop "$VIZ_PAYLOAD" "$SESSION_ID_VIZ" >&2 || true
 fi
 
