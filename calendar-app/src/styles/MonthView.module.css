@@ -1,0 +1,55 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.weekdays,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.weekdayCell {
+  padding: 0.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.dayCell {
+  min-height: 8rem;
+  border: 1px solid #d6dce4;
+  background: #fff;
+  padding: 0.5rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.dayCell:hover {
+  background: #f8fafc;
+}
+
+.dayNumber {
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.placeholder {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.today {
+  background: #dcecff;
+  border-color: #6ea9f6;
+}
+
+@media (max-width: 768px) {
+  .dayCell {
+    min-height: 6rem;
+  }
+}

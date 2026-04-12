@@ -1,0 +1,43 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #d6dce4;
+  background: #f8fafc;
+  flex-wrap: wrap;
+}
+
+.navGroup,
+.viewGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.currentLabel {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.button {
+  border: 1px solid #b8c4d4;
+  background: #fff;
+  color: #1f2937;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: #eef4fb;
+}
+
+.active {
+  background: #0b63ce;
+  border-color: #0b63ce;
+  color: #fff;
+}

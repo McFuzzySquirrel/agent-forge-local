@@ -1,13 +1,63 @@
 # Calendar Management App — Execution Plan
 
-> **Status:** Planning complete — not yet implemented  
+> **Status:** Phase 1 complete — Phase 2 not started  
 > **Source:** [docs/prd/calendar-app-prd.md](prd/calendar-app-prd.md) (Section 14: Implementation Phases)  
 > **Branch:** `experiment/ghcli-cloud`  
 > **Last updated:** 2026-04-12
+>
+> **Phase 1 verification:** `npm run build` ✅ · `npm test --run` ✅ (exit 0, no failures)
 
 ---
 
 ## Agent Roster
+
+---
+
+## Completed Tasks
+
+### Phase 1 — Core Calendar Foundation ✅ (2026-04-12)
+
+- [x] **Task 1.1** — `project-architect`: Vite 6 + React 19 + TypeScript 5 strict scaffold
+	- Files: `calendar-app/package.json`, `index.html`, `vite.config.ts`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`, `src/main.tsx`, `src/vite-env.d.ts`, `src/test-setup.ts`, `src/styles/App.module.css`, `.gitignore`, `README.md`
+	- Resolved versions: React 19.1.0, Vite 6.4.2, TypeScript 5.8.3, Vitest 3.2.4, date-fns 4.1.0, uuid 11.1.0
+- [x] **Task 1.2** — `calendar-domain-engineer`: Event types, utilities, storage, store skeleton
+	- Files: `src/types/event.ts`, `src/utils/categoryColors.ts`, `src/utils/dateHelpers.ts`, `src/utils/storage.ts`, `src/store/useEventStore.ts`, `src/store/recurrence.ts`
+	- Zero TypeScript errors in domain files
+- [x] **Task 1.3** — `react-calendar-engineer`: App composition and calendar view shells
+	- Files: `src/App.tsx`, `src/components/CalendarHeader.tsx`, `src/components/MonthView.tsx`, `src/components/WeekView.tsx`, `src/components/DayView.tsx`
+	- Styles: `src/styles/CalendarHeader.module.css`, `MonthView.module.css`, `WeekView.module.css`, `DayView.module.css`, `EventChip.module.css`, `EventModal.module.css`, `ConfirmDialog.module.css`
+	- Build: ✅ `npm run build` succeeded (223 kB bundle, 0 warnings)
+	- Tests: ✅ `npm test --run` exit 0 (no test files yet, expected)
+
+## Current Task
+
+- [ ] Phase 2, Task 2.1 — `calendar-domain-engineer`: Complete store CRUD + validation
+	- Status: **not started**
+
+## Remaining
+
+### Phase 2 — Event Workflows and Responsiveness
+- [ ] Task 2.1 — `calendar-domain-engineer`: Complete `useEventStore` CRUD (addEvent, updateEvent, deleteEvent) with localStorage flush; inline validation logic; recurrence.ts stub interface
+- [ ] Task 2.2 — `event-workflow-engineer`: EventModal, ConfirmDialog, EventChip; delete flow; empty states
+- [ ] Task 2.3 — `react-calendar-engineer`: Wire all three views to store + EventChip; responsive breakpoints; App threading for selected-date on cell click
+
+### Phase 3 — Recurrence, Quality, and Polish
+- [ ] Task 3.1 — `calendar-domain-engineer`: Full `expandRecurringEvents()` + recurrence-aware edit/delete scoping
+- [ ] Task 3.2 — `event-workflow-engineer`: Recurrence scope prompts (this vs. all future) + focus management polish
+- [ ] Task 3.3 — `react-calendar-engineer`: Connect views to full expansion; month-view perf optimisation
+- [ ] Task 3.4 — `qa-test-engineer`: Full test suite (unit + integration + recurrence + accessibility + performance)
+
+## Blockers
+- None
+
+## Notes
+- Resolved versions (2026-04-12): React 19.1.0, Vite 6.4.2, TypeScript 5.8.3, Vitest 3.2.4, date-fns 4.1.0, uuid 11.1.0
+- `recurrence.ts` is a Phase 1 stub — returns only non-recurring events; full logic deferred to Phase 3
+- CSS Module placeholders for EventChip, EventModal, ConfirmDialog exist (empty) — Phase 2 fills content
+- `useEventStore` Phase 1 only returns `{ events }` — CRUD methods added in Phase 2
+
+---
+
 
 | Agent | Domain |
 |---|---|

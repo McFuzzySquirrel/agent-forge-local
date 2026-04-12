@@ -1,6 +1,18 @@
-/* Placeholder — react-calendar-engineer will complete styles */
 .app {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background: #f3f6fb;
+  color: #111827;
+}
+
+.viewContainer {
+  flex: 1;
+  padding: 1rem;
+}
+
+@media (max-width: 768px) {
+  .viewContainer {
+    padding: 0.75rem;
+  }
 }
