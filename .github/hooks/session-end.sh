@@ -84,4 +84,11 @@ fi
 # --- 6. Clean up active session marker ---
 rm -f "$MARKER"
 
+# --- 7. Emit to visualizer (best-effort — does not affect hook outcome) ---
+SESSION_ID_VIZ="$(basename "$JOURNEY_FILE" .md)"
+if [ -x "$REPO_ROOT/.visualizer/emit-event.sh" ]; then
+  VIZ_PAYLOAD=$(jq -nc --arg reason "$REASON" '{"reason":$reason}' 2>/dev/null || echo '{}')
+  "$REPO_ROOT/.visualizer/emit-event.sh" sessionEnd "$VIZ_PAYLOAD" "$SESSION_ID_VIZ" >&2 || true
+fi
+
 exit 0

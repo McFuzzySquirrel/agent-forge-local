@@ -65,5 +65,11 @@ _sed_i "s|^branch:.*|branch: ${BRANCH}|" "$JOURNEY_FILE"
 # --- 6. Write active session marker for downstream hooks ---
 echo "$JOURNEY_FILE" > "$REPO_ROOT/.ejs-session-active"
 
+# --- 7. Emit to visualizer (best-effort — does not affect hook outcome) ---
+if [ -x "$REPO_ROOT/.visualizer/emit-event.sh" ]; then
+  VIZ_PAYLOAD=$(jq -nc --arg source "$SOURCE" '{"source":$source}' 2>/dev/null || echo '{}')
+  "$REPO_ROOT/.visualizer/emit-event.sh" sessionStart "$VIZ_PAYLOAD" "$SESSION_ID" >&2 || true
+fi
+
 echo "EJS Hook [session-start]: created $JOURNEY_FILE (source=$SOURCE)" >&2
 exit 0

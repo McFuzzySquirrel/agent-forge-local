@@ -72,5 +72,13 @@ jq -n \
   '{event:"subagent_stop",timestamp:$ts,agent:$agent,task:$task,journey:$journey}' \
   >> "$LOG_DIR/ejs-subagent-audit.jsonl" 2>/dev/null || true
 
+# --- 5. Emit to visualizer (best-effort — does not affect hook outcome) ---
+SESSION_ID_VIZ="$(basename "$JOURNEY_FILE" .md)"
+if [ -x "$REPO_ROOT/.visualizer/emit-event.sh" ]; then
+  VIZ_PAYLOAD=$(jq -nc --arg agentName "$AGENT_NAME" --arg task "$TASK_DESC" \
+    '{"agentName":$agentName,"taskDescription":$task}' 2>/dev/null || echo '{}')
+  "$REPO_ROOT/.visualizer/emit-event.sh" subagentStop "$VIZ_PAYLOAD" "$SESSION_ID_VIZ" >&2 || true
+fi
+
 echo "EJS Hook [subagent-stop]: logged ${AGENT_NAME} event to $JOURNEY_FILE" >&2
 exit 0

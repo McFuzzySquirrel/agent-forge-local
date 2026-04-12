@@ -50,5 +50,11 @@ jq -n \
   '{event:"user_prompt",timestamp:$ts,session:$session,prompt:$prompt}' \
   >> "$LOG_DIR/ejs-prompt-audit.jsonl" 2>/dev/null || true
 
+# --- 4. Emit to visualizer (best-effort — does not affect hook outcome) ---
+if [ -n "$SESSION_ID" ] && [ -x "$REPO_ROOT/.visualizer/emit-event.sh" ]; then
+  VIZ_PAYLOAD=$(jq -nc --arg prompt "$PROMPT" '{"prompt":$prompt}' 2>/dev/null || echo '{}')
+  "$REPO_ROOT/.visualizer/emit-event.sh" userPromptSubmitted "$VIZ_PAYLOAD" "$SESSION_ID" >&2 || true
+fi
+
 echo "EJS Hook [log-prompt]: logged prompt to audit trail" >&2
 exit 0
