@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 import type { CalendarOccurrence } from '../store/recurrence';
 import { formatDate, getDayHours, getWeekDays, isSameDay, parseISO } from '../utils/dateHelpers';
 import { EventChip } from './EventChip';
@@ -36,7 +38,7 @@ function getDayOccurrences(occurrences: CalendarOccurrence[], day: Date): Calend
     .sort((left, right) => left.occurrenceStartTime.localeCompare(right.occurrenceStartTime));
 }
 
-export function WeekView({ activeDate, occurrences, onTimeSlotClick, onEventClick }: WeekViewProps) {
+export const WeekView = memo(function WeekView({ activeDate, occurrences, onTimeSlotClick, onEventClick }: WeekViewProps) {
   const weekDays = getWeekDays(activeDate);
   const hours = getDayHours(activeDate);
   const hasVisibleEvents = occurrences.length > 0;
@@ -177,4 +179,4 @@ export function WeekView({ activeDate, occurrences, onTimeSlotClick, onEventClic
       </div>
     </section>
   );
-}
+});

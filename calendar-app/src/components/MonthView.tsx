@@ -1,12 +1,11 @@
+import { memo, useMemo } from 'react';
+
 import type { CalendarOccurrence } from '../store/recurrence';
 import {
-  endOfDay,
   formatDate,
   getMonthDays,
-  isBefore,
   isSameDay,
   parseISO,
-  startOfDay,
 } from '../utils/dateHelpers';
 import { EventChip } from './EventChip';
 import styles from '../styles/MonthView.module.css';
@@ -33,24 +32,45 @@ function buildMonthCells(activeDate: Date): Array<Date | null> {
   ];
 }
 
-function getDayOccurrences(occurrences: CalendarOccurrence[], day: Date): CalendarOccurrence[] {
-  const dayStart = startOfDay(day);
-  const dayEnd = endOfDay(day);
+/** Pre-groups occurrences by 'yyyy-MM-dd' date key for O(1) cell lookup. */
+function groupOccurrencesByDate(
+  occurrences: CalendarOccurrence[]
+): Map<string, CalendarOccurrence[]> {
+  const grouped = new Map<string, CalendarOccurrence[]>();
 
-  return occurrences
-    .filter((occurrence) => {
-      const occurrenceStart = parseISO(occurrence.occurrenceStartTime);
-      const occurrenceEnd = parseISO(occurrence.occurrenceEndTime);
+  for (const occ of occurrences) {
+    const date = parseISO(occ.occurrenceStartTime);
+    // Build 'yyyy-MM-dd' key without importing date-fns format here.
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const bucket = grouped.get(key);
 
-      return !isBefore(dayEnd, occurrenceStart) && !isBefore(occurrenceEnd, dayStart);
-    })
-    .sort((left, right) => left.occurrenceStartTime.localeCompare(right.occurrenceStartTime));
+    if (bucket) {
+      bucket.push(occ);
+    } else {
+      grouped.set(key, [occ]);
+    }
+  }
+
+  // Sort each bucket by start time.
+  for (const bucket of grouped.values()) {
+    bucket.sort((a, b) => a.occurrenceStartTime.localeCompare(b.occurrenceStartTime));
+  }
+
+  return grouped;
 }
 
-export function MonthView({ activeDate, occurrences, onDayClick, onEventClick }: MonthViewProps) {
+function getDayKey(day: Date): string {
+  return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+}
+
+export const MonthView = memo(function MonthView({ activeDate, occurrences, onDayClick, onEventClick }: MonthViewProps) {
   const monthCells = buildMonthCells(activeDate);
   const today = new Date();
   const hasVisibleEvents = occurrences.length > 0;
+
+  // Pre-group occurrences by date key so each day cell lookup is O(1)
+  // rather than O(n) — important for months with 100+ events (NF-01).
+  const occurrencesByDate = useMemo(() => groupOccurrencesByDate(occurrences), [occurrences]);
 
   return (
     <section className={styles.wrapper} aria-label="Month calendar view">
@@ -75,7 +95,7 @@ export function MonthView({ activeDate, occurrences, onDayClick, onEventClick }:
           }
 
           const isToday = isSameDay(day, today);
-          const dayOccurrences = getDayOccurrences(occurrences, day);
+          const dayOccurrences = occurrencesByDate.get(getDayKey(day)) ?? [];
 
           return (
             <div key={day.toISOString()} className={`${styles.dayCell} ${isToday ? styles.today : ''}`}>
@@ -122,4 +142,4 @@ export function MonthView({ activeDate, occurrences, onDayClick, onEventClick }:
       </div>
     </section>
   );
-}
+});

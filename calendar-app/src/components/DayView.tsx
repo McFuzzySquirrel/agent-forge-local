@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 import type { CalendarOccurrence } from '../store/recurrence';
 import { formatDate, getDayHours, parseISO } from '../utils/dateHelpers';
 import { EventChip } from './EventChip';
@@ -16,7 +18,7 @@ function getHourOccurrences(occurrences: CalendarOccurrence[], hour: number): Ca
     .sort((left, right) => left.occurrenceStartTime.localeCompare(right.occurrenceStartTime));
 }
 
-export function DayView({ activeDate, occurrences, onTimeSlotClick, onEventClick }: DayViewProps) {
+export const DayView = memo(function DayView({ activeDate, occurrences, onTimeSlotClick, onEventClick }: DayViewProps) {
   const hours = getDayHours(activeDate);
   const hasVisibleEvents = occurrences.length > 0;
 
@@ -78,4 +80,4 @@ export function DayView({ activeDate, occurrences, onTimeSlotClick, onEventClick
       </div>
     </section>
   );
-}
+});
