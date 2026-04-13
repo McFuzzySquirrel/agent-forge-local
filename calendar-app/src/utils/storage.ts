@@ -44,6 +44,26 @@ function toSanitizedEvent(value: unknown): CalendarEvent | null {
 
   const description = typeof value.description === 'string' ? value.description : '';
 
+  // ── Optional recurrence fields ──────────────────────────────────────────
+  const recurrenceEndDate =
+    typeof value.recurrenceEndDate === 'string' ? value.recurrenceEndDate : undefined;
+
+  const excludedDates =
+    Array.isArray(value.excludedDates) &&
+    value.excludedDates.every((d: unknown) => typeof d === 'string')
+      ? (value.excludedDates as string[])
+      : undefined;
+
+  const exceptions =
+    Array.isArray(value.exceptions)
+      ? value.exceptions.filter(
+          (ex: unknown): ex is { date: string; override: Record<string, unknown> } =>
+            isRecord(ex) &&
+            typeof (ex as Record<string, unknown>).date === 'string' &&
+            isRecord((ex as Record<string, unknown>).override)
+        )
+      : undefined;
+
   return {
     id,
     title,
@@ -56,6 +76,9 @@ function toSanitizedEvent(value: unknown): CalendarEvent | null {
       typeof value.color === 'string' && value.color.length > 0
         ? value.color
         : getCategoryColor(category as EventCategory),
+    ...(recurrenceEndDate !== undefined && { recurrenceEndDate }),
+    ...(excludedDates !== undefined && { excludedDates }),
+    ...(exceptions !== undefined && exceptions.length > 0 && { exceptions }),
   };
 }
 
@@ -72,14 +95,26 @@ export function loadEventsFromStorage(): CalendarEvent[] {
     const raw = localStorage.getItem(STORAGE_KEY);
 
     if (!raw) {
-      console.warn('No stored calendar events found. Using empty state.');
       return [];
     }
 
-    const parsed: unknown = JSON.parse(raw);
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      console.warn(
+        'calendar-app: Failed to parse stored events (JSON invalid). Clearing corrupt storage and using empty state.'
+      );
+      localStorage.removeItem(STORAGE_KEY);
+      return [];
+    }
 
     if (!Array.isArray(parsed)) {
-      console.warn('Stored calendar events are malformed. Using empty state.');
+      console.warn(
+        'calendar-app: Stored events payload is not an array. Clearing corrupt storage and using empty state.'
+      );
+      localStorage.removeItem(STORAGE_KEY);
       return [];
     }
 
@@ -88,12 +123,15 @@ export function loadEventsFromStorage(): CalendarEvent[] {
       .filter((eventLike): eventLike is CalendarEvent => eventLike !== null);
 
     if (sanitized.length !== parsed.length) {
-      console.warn('Dropped invalid calendar events from localStorage payload.');
+      console.warn('calendar-app: Dropped invalid calendar events from localStorage payload.');
     }
 
     return sanitized;
   } catch (error) {
-    console.warn('Failed to load calendar events from localStorage. Using empty state.', error);
+    console.warn(
+      'calendar-app: Failed to load calendar events from localStorage. Using empty state.',
+      error
+    );
     return [];
   }
 }
