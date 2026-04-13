@@ -29,6 +29,14 @@ sessionStart, sessionEnd, userPromptSubmitted, preToolUse, postToolUse,
 postToolUseFailure, subagentStart, subagentStop, agentStop, notification,
 errorOccurred
 
+## Hook Discovery
+The bootstrap script scans `.github/hooks/` and its subdirectories for shell
+scripts that match known lifecycle names. If your hooks live in a subfolder
+(e.g. `.github/hooks/copilot/session-start.sh`) they are discovered automatically.
+
+When a `--prefix` is used, filenames like `<prefix>-session-start.sh` are also
+matched (e.g. `viz-session-start.sh` with `--prefix viz`).
+
 ## Live Viewing
 1. Start the ingest service from the visualizer repo:
    npm run serve:ingest   (from /home/mcfuzzysquirrel/Projects/agent-forge-visualizer)
