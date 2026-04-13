@@ -2,13 +2,20 @@ import { useMemo, useState } from 'react';
 
 import { CalendarHeader } from './components/CalendarHeader';
 import { DayView } from './components/DayView';
+import { EventModal } from './components/EventModal';
 import { MonthView } from './components/MonthView';
 import { WeekView } from './components/WeekView';
+import type { CalendarOccurrence } from './store/recurrence';
+import { expandRecurringEvents } from './store/recurrence';
 import { useEventStore } from './store/useEventStore';
 import {
   addDays,
   addMonths,
   addWeeks,
+  endOfDay,
+  getMonthDays,
+  getWeekDays,
+  startOfDay,
   subDays,
   subMonths,
   subWeeks,
@@ -17,10 +24,57 @@ import styles from './styles/App.module.css';
 
 export type CalendarView = 'month' | 'week' | 'day';
 
+function getVisibleRange(activeDate: Date, activeView: CalendarView): { start: Date; end: Date } {
+  if (activeView === 'month') {
+    const monthDays = getMonthDays(activeDate.getFullYear(), activeDate.getMonth());
+
+    return {
+      start: startOfDay(monthDays[0]),
+      end: endOfDay(monthDays[monthDays.length - 1]),
+    };
+  }
+
+  if (activeView === 'week') {
+    const weekDays = getWeekDays(activeDate);
+
+    return {
+      start: startOfDay(weekDays[0]),
+      end: endOfDay(weekDays[weekDays.length - 1]),
+    };
+  }
+
+  return {
+    start: startOfDay(activeDate),
+    end: endOfDay(activeDate),
+  };
+}
+
 export default function App() {
   const [activeView, setActiveView] = useState<CalendarView>('month');
   const [activeDate, setActiveDate] = useState<Date>(new Date());
-  const { events } = useEventStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [selectedEventId, setSelectedEventId] = useState<string>();
+  const {
+    events,
+    validationErrors,
+    addEvent,
+    updateEvent,
+    deleteEvent,
+    clearValidationErrors,
+    validateEvent,
+  } = useEventStore();
+
+  const visibleRange = useMemo(() => getVisibleRange(activeDate, activeView), [activeDate, activeView]);
+  const visibleOccurrences = useMemo(
+    () => expandRecurringEvents(events, visibleRange.start, visibleRange.end),
+    [events, visibleRange]
+  );
+  const selectedEvent = useMemo(
+    () => events.find((event) => event.id === selectedEventId),
+    [events, selectedEventId]
+  );
 
   const handlePrev = () => {
     setActiveDate((current) => {
@@ -54,41 +108,63 @@ export default function App() {
     setActiveDate(new Date());
   };
 
-  const activeViewContent = useMemo(() => {
-    if (activeView === 'month') {
-      return (
-        <MonthView
-          activeDate={activeDate}
-          events={events}
-          onDayClick={() => {
-            // Phase 2 wires day click to modal creation flow.
-          }}
-        />
-      );
-    }
+  const handleCreateFromDate = (date: Date) => {
+    setActiveDate(date);
+    setSelectedDate(new Date(date));
+    setSelectedEventId(undefined);
+    setModalMode('create');
+    clearValidationErrors();
+    setIsModalOpen(true);
+  };
 
-    if (activeView === 'week') {
-      return (
-        <WeekView
-          activeDate={activeDate}
-          events={events}
-          onTimeSlotClick={() => {
-            // Phase 2 wires slot click to modal creation flow.
-          }}
-        />
-      );
-    }
+  const handleEditEvent = (occurrence: CalendarOccurrence) => {
+    const occurrenceDate = new Date(occurrence.occurrenceStartTime);
 
-    return (
-      <DayView
+    setActiveDate(occurrenceDate);
+    setSelectedDate(occurrenceDate);
+    setSelectedEventId(occurrence.sourceEventId);
+    setModalMode('edit');
+    clearValidationErrors();
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedEventId(undefined);
+    setSelectedDate(undefined);
+    clearValidationErrors();
+  };
+
+  let activeViewContent;
+
+  if (activeView === 'month') {
+    activeViewContent = (
+      <MonthView
         activeDate={activeDate}
-        events={events}
-        onTimeSlotClick={() => {
-          // Phase 2 wires slot click to modal creation flow.
-        }}
+        occurrences={visibleOccurrences}
+        onDayClick={handleCreateFromDate}
+        onEventClick={handleEditEvent}
       />
     );
-  }, [activeDate, activeView, events]);
+  } else if (activeView === 'week') {
+    activeViewContent = (
+      <WeekView
+        activeDate={activeDate}
+        occurrences={visibleOccurrences}
+        onTimeSlotClick={handleCreateFromDate}
+        onEventClick={handleEditEvent}
+      />
+    );
+  } else {
+    activeViewContent = (
+      <DayView
+        activeDate={activeDate}
+        occurrences={visibleOccurrences}
+        onTimeSlotClick={handleCreateFromDate}
+        onEventClick={handleEditEvent}
+      />
+    );
+  }
 
   return (
     <div className={styles.app}>
@@ -101,6 +177,24 @@ export default function App() {
         onToday={handleToday}
       />
       <main className={styles.viewContainer}>{activeViewContent}</main>
+      <EventModal
+        isOpen={isModalOpen}
+        mode={modalMode}
+        event={modalMode === 'edit' ? selectedEvent : undefined}
+        selectedDate={selectedDate}
+        validationErrors={validationErrors}
+        validateEvent={validateEvent}
+        onSave={(draft) => {
+          if (modalMode === 'edit' && selectedEvent) {
+            return updateEvent(selectedEvent.id, draft);
+          }
+
+          return addEvent(draft);
+        }}
+        onDelete={modalMode === 'edit' ? deleteEvent : undefined}
+        onClose={handleModalClose}
+        onClearValidationErrors={clearValidationErrors}
+      />
     </div>
   );
 }

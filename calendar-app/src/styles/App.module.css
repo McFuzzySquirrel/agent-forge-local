@@ -4,15 +4,27 @@
   min-height: 100vh;
   background: #f3f6fb;
   color: #111827;
+  overflow-x: hidden;
 }
 
 .viewContainer {
   flex: 1;
+  width: min(100%, 88rem);
+  margin: 0 auto;
   padding: 1rem;
+  box-sizing: border-box;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .viewContainer {
+    width: min(100%, 72rem);
+    padding: 0.875rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .viewContainer {
+    width: 100%;
     padding: 0.75rem;
   }
 }

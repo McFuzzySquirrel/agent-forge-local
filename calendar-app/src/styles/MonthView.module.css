@@ -1,7 +1,15 @@
 .wrapper {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
+}
+
+.emptyState {
+  padding: 0.875rem 1rem;
+  border: 1px solid #d6dce4;
+  border-radius: 0.875rem;
+  background: #fff;
+  color: #4b5563;
 }
 
 .weekdays,
@@ -11,31 +19,62 @@
 }
 
 .weekdayCell {
-  padding: 0.5rem;
+  padding: 0.625rem 0.5rem;
   text-align: center;
   font-weight: 600;
   color: #4b5563;
+  font-size: 0.875rem;
 }
 
 .dayCell {
-  min-height: 8rem;
   border: 1px solid #d6dce4;
+  border-radius: 0.875rem;
   background: #fff;
-  padding: 0.5rem;
-  text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  cursor: pointer;
+  min-height: 10rem;
+  overflow: hidden;
 }
 
-.dayCell:hover {
+.emptyCell {
+  min-height: 10rem;
+  border-radius: 0.875rem;
+  background: transparent;
+}
+
+.dayButton {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem 0.5rem;
+  border: 0;
+  border-bottom: 1px solid #edf1f7;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.dayButton:hover {
   background: #f8fafc;
+}
+
+.dayButton:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
 }
 
 .dayNumber {
   font-weight: 700;
   color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.dayMeta {
+  font-size: 0.7rem;
+  color: #6b7280;
 }
 
 .placeholder {
@@ -43,13 +82,77 @@
   color: #6b7280;
 }
 
+.eventList {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.625rem 0.75rem 0.75rem;
+}
+
+.eventItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.eventTime,
+.moreEvents {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+.eventChip {
+  width: 100%;
+}
+
 .today {
   background: #dcecff;
   border-color: #6ea9f6;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
+  .dayCell,
+  .emptyCell {
+    min-height: 8.5rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .weekdays {
+    gap: 0.25rem;
+  }
+
+  .grid {
+    gap: 0.25rem;
+  }
+
   .dayCell {
-    min-height: 6rem;
+    min-height: 7.2rem;
+  }
+
+  .emptyCell {
+    min-height: 7.2rem;
+  }
+
+  .weekdayCell {
+    padding: 0.4rem 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  .dayButton {
+    padding: 0.5rem;
+  }
+
+  .dayMeta,
+  .eventTime,
+  .moreEvents,
+  .placeholder {
+    font-size: 0.65rem;
+  }
+
+  .eventList {
+    gap: 0.3rem;
+    padding: 0.5rem;
   }
 }

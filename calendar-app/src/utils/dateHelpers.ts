@@ -60,6 +60,10 @@ export function addDays(date: Date, amount: number): Date {
   return dateFnsAddDays(date, amount);
 }
 
+export function addHoursToDate(date: Date, amount: number): Date {
+  return addHours(date, amount);
+}
+
 export function addWeeks(date: Date, amount: number): Date {
   return dateFnsAddWeeks(date, amount);
 }

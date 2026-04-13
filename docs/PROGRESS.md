@@ -1,9 +1,9 @@
 # Calendar Management App — Execution Plan
 
-> **Status:** Phase 1 complete — Phase 2 not started  
+> **Status:** Phase 2 complete — ready for Phase 3  
 > **Source:** [docs/prd/calendar-app-prd.md](prd/calendar-app-prd.md) (Section 14: Implementation Phases)  
 > **Branch:** `experiment/ghcli-cloud`  
-> **Last updated:** 2026-04-12
+> **Last updated:** 2026-04-13
 >
 > **Phase 1 verification:** `npm run build` ✅ · `npm test --run` ✅ (exit 0, no failures)
 
@@ -29,17 +29,33 @@
 	- Build: ✅ `npm run build` succeeded (223 kB bundle, 0 warnings)
 	- Tests: ✅ `npm test --run` exit 0 (no test files yet, expected)
 
+### Phase 2 — Event Workflows and Responsiveness
+
+- [x] **Task 2.1** — `calendar-domain-engineer`: Complete store CRUD + validation
+	- Files: `src/store/useEventStore.ts`, `src/store/recurrence.ts`
+	- Exposed contracts: `EventDraft`, `EventMutationResult`, store CRUD methods, validation state, and `CalendarOccurrence` recurrence stub
+	- Verification: ✅ `npm run build`
+- [x] **Task 2.2** — `event-workflow-engineer`: EventModal, ConfirmDialog, EventChip; delete flow; empty states
+	- Files: `src/components/EventModal.tsx`, `src/components/ConfirmDialog.tsx`, `src/components/EventChip.tsx`, `src/styles/EventModal.module.css`, `src/styles/ConfirmDialog.module.css`, `src/styles/EventChip.module.css`
+	- Integration note: exported `addHoursToDate()` from `src/utils/dateHelpers.ts` to support modal default-time prefill
+	- Verification: ✅ `npm run build` · `npm test -- --run`
+- [x] **Task 2.3** — `react-calendar-engineer`: Wire all three views to store + EventChip; responsive breakpoints; App threading for selected-date on cell click
+	- Files: `src/App.tsx`, `src/components/MonthView.tsx`, `src/components/WeekView.tsx`, `src/components/DayView.tsx`, `src/styles/App.module.css`, `src/styles/MonthView.module.css`, `src/styles/WeekView.module.css`, `src/styles/DayView.module.css`
+	- Delivered: App-owned create/edit modal state, visible-range occurrence wiring via `expandRecurringEvents()`, clickable event chips across month/week/day, view-level empty states, and mobile-safe week/day layouts
+	- Verification: ✅ `npm run build` · `npm test -- --run`
+
 ## Current Task
 
-- [ ] Phase 2, Task 2.1 — `calendar-domain-engineer`: Complete store CRUD + validation
-	- Status: **not started**
+- [ ] Phase 3, Task 3.1 — `calendar-domain-engineer`: Full `expandRecurringEvents()` + recurrence-aware edit/delete scoping
+	- Status: **pending**
+	- Notes: Phase 2 completed; next phase starts by replacing the recurrence stub without changing the established App/view wiring shape.
 
 ## Remaining
 
 ### Phase 2 — Event Workflows and Responsiveness
-- [ ] Task 2.1 — `calendar-domain-engineer`: Complete `useEventStore` CRUD (addEvent, updateEvent, deleteEvent) with localStorage flush; inline validation logic; recurrence.ts stub interface
-- [ ] Task 2.2 — `event-workflow-engineer`: EventModal, ConfirmDialog, EventChip; delete flow; empty states
-- [ ] Task 2.3 — `react-calendar-engineer`: Wire all three views to store + EventChip; responsive breakpoints; App threading for selected-date on cell click
+- [x] Task 2.1 — `calendar-domain-engineer`: Complete `useEventStore` CRUD (addEvent, updateEvent, deleteEvent) with localStorage flush; inline validation logic; recurrence.ts stub interface
+- [x] Task 2.2 — `event-workflow-engineer`: EventModal, ConfirmDialog, EventChip; delete flow; empty states
+- [x] Task 2.3 — `react-calendar-engineer`: Wire all three views to store + EventChip; responsive breakpoints; App threading for selected-date on cell click
 
 ### Phase 3 — Recurrence, Quality, and Polish
 - [ ] Task 3.1 — `calendar-domain-engineer`: Full `expandRecurringEvents()` + recurrence-aware edit/delete scoping

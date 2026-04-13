@@ -1,3 +1,50 @@
 .chip {
+  --event-chip-color: #9b9b9b;
   display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 100%;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--event-chip-color) 35%, #d6dce4);
+  background: color-mix(in srgb, var(--event-chip-color) 14%, white);
+  color: #1f2937;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.buttonChip {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.buttonChip:hover {
+  background: color-mix(in srgb, var(--event-chip-color) 20%, white);
+}
+
+.buttonChip:focus-visible {
+  outline: 2px solid var(--event-chip-color);
+  outline-offset: 2px;
+}
+
+.colorDot {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--event-chip-color);
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.category {
+  flex: 0 0 auto;
+  color: #4b5563;
 }
