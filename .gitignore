@@ -13,3 +13,4 @@ venv/
 .ejs-session-active
 .ejs-session-incomplete
 logs/*.jsonl
+.ejs.db

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# EJS Hook: preToolUse
-# Soft-enforcement hook: logs tool invocation metadata and always allows execution.
-# Input (stdin): JSON with timestamp, cwd, toolName, toolArgs
-# Output: JSON permission decision for Copilot hook contract
+# EJS Hook: errorOccurred
+# Logs Copilot runtime errors to JSONL audit trail for diagnostics.
+# Input (stdin): JSON with timestamp, cwd, error{name,message,stack}
+# Output: none (ignored by platform)
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -10,8 +10,9 @@ INPUT="$(cat || true)"
 
 # Parse input defensively.
 TIMESTAMP="$(echo "$INPUT" | jq -r '.timestamp // empty' 2>/dev/null || true)"
-TOOL_NAME="$(echo "$INPUT" | jq -r '.toolName // "unknown"' 2>/dev/null || true)"
-ARGS="$(echo "$INPUT" | jq -c '.toolArgs // {}' 2>/dev/null || echo '{}')"
+ERROR_NAME="$(echo "$INPUT" | jq -r '.error.name // "unknown"' 2>/dev/null || true)"
+ERROR_MESSAGE="$(echo "$INPUT" | jq -r '.error.message // ""' 2>/dev/null || true)"
+ERROR_STACK="$(echo "$INPUT" | jq -r '.error.stack // ""' 2>/dev/null || true)"
 
 # Portable epoch-to-ISO conversion (GNU date -d vs BSD date -r)
 _epoch_to_iso() {
@@ -39,18 +40,18 @@ if [ -f "$MARKER" ]; then
   SESSION_ID="$(basename "$JOURNEY_FILE" .md)"
 fi
 
-# Append lightweight audit record.
+# Append audit record.
 LOG_DIR="$REPO_ROOT/logs"
 mkdir -p "$LOG_DIR"
 
 jq -n \
   --arg ts "$TS_DISPLAY" \
   --arg session "$SESSION_ID" \
-  --arg tool "$TOOL_NAME" \
-  --argjson args "$ARGS" \
-  '{event:"tool_use_pre",timestamp:$ts,session:$session,toolName:$tool,toolArgs:$args,permissionDecision:"allow"}' \
-  >> "$LOG_DIR/ejs-tool-use-audit.jsonl" 2>/dev/null || true
+  --arg name "$ERROR_NAME" \
+  --arg msg "$ERROR_MESSAGE" \
+  --arg stack "$ERROR_STACK" \
+  '{event:"error_occurred",timestamp:$ts,session:$session,errorName:$name,errorMessage:$msg,errorStack:$stack}' \
+  >> "$LOG_DIR/ejs-error-audit.jsonl" 2>/dev/null || true
 
-# Never block tool execution in this phase.
-jq -n '{permissionDecision:"allow"}' 2>/dev/null || echo '{"permissionDecision":"allow"}'
+echo "EJS Hook [error-occurred]: logged $ERROR_NAME" >&2
 exit 0
