@@ -4,7 +4,7 @@
     "sessionStart": [
       {
         "type": "command",
-        "bash": "./.github/hooks/viz-session-start.sh",
+        "bash": "./.github/hooks/session-start.sh",
         "cwd": ".",
         "timeoutSec": 15
       }
@@ -12,7 +12,7 @@
     "sessionEnd": [
       {
         "type": "command",
-        "bash": "./.github/hooks/viz-session-end.sh",
+        "bash": "./.github/hooks/session-end.sh",
         "cwd": ".",
         "timeoutSec": 15
       }
@@ -20,7 +20,7 @@
     "subagentStop": [
       {
         "type": "command",
-        "bash": "./.github/hooks/viz-subagent-stop.sh",
+        "bash": "./.github/hooks/subagent-stop.sh",
         "cwd": ".",
         "timeoutSec": 10
       }
@@ -36,7 +36,7 @@
     "userPromptSubmitted": [
       {
         "type": "command",
-        "bash": "./.github/hooks/viz-log-prompt.sh",
+        "bash": "./.github/hooks/log-prompt.sh",
         "cwd": ".",
         "timeoutSec": 5
       }
@@ -44,7 +44,7 @@
     "preToolUse": [
       {
         "type": "command",
-        "bash": "./.github/hooks/viz-pre-tool-use.sh",
+        "bash": "./.github/hooks/pre-tool-use.sh",
         "cwd": ".",
         "timeoutSec": 10
       }
@@ -52,7 +52,7 @@
     "postToolUse": [
       {
         "type": "command",
-        "bash": "./.github/hooks/viz-post-tool-use.sh",
+        "bash": "./.github/hooks/post-tool-use.sh",
         "cwd": ".",
         "timeoutSec": 10
       }
