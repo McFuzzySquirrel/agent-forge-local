@@ -54,4 +54,11 @@ jq -n \
   >> "$LOG_DIR/ejs-tool-use-audit.jsonl" 2>/dev/null || true
 
 echo "EJS Hook [post-tool-use]: logged $TOOL_NAME ($RESULT_TYPE)" >&2
+
+# --- Visualizer emit (auto-wired by bootstrap-existing-repo) ---
+if [ -x "${REPO_ROOT}/.visualizer/emit-event.sh" ]; then
+  _VIZ_PAYLOAD=$(jq -nc --arg tool "${TOOL_NAME:-unknown}" --arg status "${STATUS:-unknown}" '{"toolName":$tool,"status":$status}' 2>/dev/null || echo '{}')
+  "${REPO_ROOT}/.visualizer/emit-event.sh" postToolUse "${_VIZ_PAYLOAD}" "${SESSION_ID:-run-$}" >&2 || true
+fi
+
 exit 0

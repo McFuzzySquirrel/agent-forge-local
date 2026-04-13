@@ -53,4 +53,11 @@ jq -n \
 
 # Never block tool execution in this phase.
 jq -n '{permissionDecision:"allow"}' 2>/dev/null || echo '{"permissionDecision":"allow"}'
+
+# --- Visualizer emit (auto-wired by bootstrap-existing-repo) ---
+if [ -x "${REPO_ROOT}/.visualizer/emit-event.sh" ]; then
+  _VIZ_PAYLOAD=$(jq -nc --arg tool "${TOOL_NAME:-unknown}" '{"toolName":$tool}' 2>/dev/null || echo '{}')
+  "${REPO_ROOT}/.visualizer/emit-event.sh" preToolUse "${_VIZ_PAYLOAD}" "${SESSION_ID:-run-$}" >&2 || true
+fi
+
 exit 0

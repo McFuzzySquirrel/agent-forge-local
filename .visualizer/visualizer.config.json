@@ -1,0 +1,8 @@
+{
+  "visualizerRoot": "/home/mcfuzzysquirrel/Projects/agent-forge-visualizer",
+  "repoPath": "/home/mcfuzzysquirrel/Projects/agent-forge-local",
+  "jsonlPath": ".visualizer/logs/events.jsonl",
+  "httpEndpoint": "http://127.0.0.1:7070/events",
+  "source": "copilot-cli",
+  "storePrompts": false
+}

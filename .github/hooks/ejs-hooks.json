@@ -1,4 +1,61 @@
 {
   "version": 1,
-  "hooks": {}
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/viz-session-start.sh",
+        "cwd": ".",
+        "timeoutSec": 15
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/viz-session-end.sh",
+        "cwd": ".",
+        "timeoutSec": 15
+      }
+    ],
+    "subagentStop": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/viz-subagent-stop.sh",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ],
+    "subagentStart": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/viz-subagent-start.sh",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/viz-log-prompt.sh",
+        "cwd": ".",
+        "timeoutSec": 5
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/viz-pre-tool-use.sh",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/viz-post-tool-use.sh",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ]
+  }
 }
