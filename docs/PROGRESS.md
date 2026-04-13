@@ -1,11 +1,11 @@
 # Calendar Management App — Execution Plan
 
-> **Status:** Phase 2 complete — ready for Phase 3  
+> **Status:** Phase 3 complete — ALL PHASES DONE ✅  
 > **Source:** [docs/prd/calendar-app-prd.md](prd/calendar-app-prd.md) (Section 14: Implementation Phases)  
 > **Branch:** `experiment/ghcli-cloud`  
 > **Last updated:** 2026-04-13
 >
-> **Phase 1 verification:** `npm run build` ✅ · `npm test --run` ✅ (exit 0, no failures)
+> **Final verification:** `npm run build` ✅ · `npm test -- --run` ✅ · **221 tests, 0 failed**
 
 ---
 
@@ -44,33 +44,38 @@
 	- Delivered: App-owned create/edit modal state, visible-range occurrence wiring via `expandRecurringEvents()`, clickable event chips across month/week/day, view-level empty states, and mobile-safe week/day layouts
 	- Verification: ✅ `npm run build` · `npm test -- --run`
 
-## Current Task
+### Phase 3 — Recurrence, Quality, and Polish ✅ (2026-04-13)
 
-- [ ] Phase 3, Task 3.1 — `calendar-domain-engineer`: Full `expandRecurringEvents()` + recurrence-aware edit/delete scoping
-	- Status: **pending**
-	- Notes: Phase 2 completed; next phase starts by replacing the recurrence stub without changing the established App/view wiring shape.
+- [x] **Task 3.1** — `calendar-domain-engineer`: Full `expandRecurringEvents()` + recurrence-aware edit/delete scoping
+	- Files: `src/types/event.ts`, `src/store/recurrence.ts`, `src/store/useEventStore.ts`, `src/utils/storage.ts`
+	- Commit: `04b8d95`
+	- Verification: ✅ `npm run build` · `npm test -- --run`
+- [x] **Task 3.2** — `event-workflow-engineer`: Recurrence scope prompts + focus management polish
+	- Files: `src/components/EventModal.tsx`, `src/components/ConfirmDialog.tsx`, `src/App.tsx`, `src/styles/EventModal.module.css`, `src/styles/ConfirmDialog.module.css`
+	- Verification: ✅ `npm run build` · `npm test -- --run`
+- [x] **Task 3.3** — `react-calendar-engineer`: Views wired to full expansion; month-view O(1) perf + React.memo
+	- Files: `src/components/MonthView.tsx`, `src/components/WeekView.tsx`, `src/components/DayView.tsx`
+	- Commit: `c931183`
+	- Verification: ✅ `npm run build` · `npm test -- --run`
+- [x] **Task 3.4** — `qa-test-engineer`: Full test suite — 221 tests, 0 failures
+	- Files: `src/tests/unit/dateHelpers.test.ts`, `categoryColors.test.ts`, `storage.test.ts`, `recurrence.test.ts`, `src/tests/integration/useEventStore.test.ts`, `EventModal.test.tsx`, `ConfirmDialog.test.tsx`, `src/tests/accessibility/a11y.test.tsx`, `src/tests/performance/monthView.perf.test.tsx`
+	- Commit: `9003a9d`
+	- Verification: ✅ **221 tests passed, 0 failed**
+
+## Current Task
+- None — ALL PHASES COMPLETE ✅
 
 ## Remaining
-
-### Phase 2 — Event Workflows and Responsiveness
-- [x] Task 2.1 — `calendar-domain-engineer`: Complete `useEventStore` CRUD (addEvent, updateEvent, deleteEvent) with localStorage flush; inline validation logic; recurrence.ts stub interface
-- [x] Task 2.2 — `event-workflow-engineer`: EventModal, ConfirmDialog, EventChip; delete flow; empty states
-- [x] Task 2.3 — `react-calendar-engineer`: Wire all three views to store + EventChip; responsive breakpoints; App threading for selected-date on cell click
-
-### Phase 3 — Recurrence, Quality, and Polish
-- [ ] Task 3.1 — `calendar-domain-engineer`: Full `expandRecurringEvents()` + recurrence-aware edit/delete scoping
-- [ ] Task 3.2 — `event-workflow-engineer`: Recurrence scope prompts (this vs. all future) + focus management polish
-- [ ] Task 3.3 — `react-calendar-engineer`: Connect views to full expansion; month-view perf optimisation
-- [ ] Task 3.4 — `qa-test-engineer`: Full test suite (unit + integration + recurrence + accessibility + performance)
+- None
 
 ## Blockers
 - None
 
 ## Notes
 - Resolved versions (2026-04-12): React 19.1.0, Vite 6.4.2, TypeScript 5.8.3, Vitest 3.2.4, date-fns 4.1.0, uuid 11.1.0
-- `recurrence.ts` is a Phase 1 stub — returns only non-recurring events; full logic deferred to Phase 3
-- CSS Module placeholders for EventChip, EventModal, ConfirmDialog exist (empty) — Phase 2 fills content
-- `useEventStore` Phase 1 only returns `{ events }` — CRUD methods added in Phase 2
+- Phase 3 recurrence model: `occurrenceId = "<eventId>::<yyyy-MM-dd>"` for stable React keys
+- Scope-aware edit/delete: `updateEventOccurrence` / `deleteEventOccurrence` with `'this' | 'all-future'`
+- Month-view perf: O(1) day-cell lookup via `groupOccurrencesByDate()` Map + `useMemo` + `React.memo`
 
 ---
 
