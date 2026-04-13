@@ -34,13 +34,43 @@ export interface EventModalProps {
   isOpen: boolean;
   mode: 'create' | 'edit';
   event?: CalendarEvent;
+  /** The specific occurrence date being edited — required to use updateEventOccurrence (FR-21). */
+  occurrenceDate?: Date;
   selectedDate?: Date;
   validationErrors?: ValidationResult['errors'];
   validateEvent: (draft: EventDraft) => ValidationResult;
   onSave: (draft: EventDraft) => EventMutationResult;
+  /** Called instead of onSave when editing a recurring occurrence (FR-21). */
+  onSaveOccurrence?: (draft: EventDraft, scope: 'this' | 'all-future') => EventMutationResult;
   onClose: () => void;
   onDelete?: (eventId: string) => void;
+  /** Called instead of onDelete when deleting a recurring occurrence (FR-22). */
+  onDeleteOccurrence?: (scope: 'this' | 'all-future') => void;
   onClearValidationErrors?: () => void;
+}
+
+/** Trap Tab / Shift+Tab focus inside the given modal element (ACC-02). */
+function trapFocus(event: React.KeyboardEvent<HTMLElement>): void {
+  if (event.key !== 'Tab') return;
+
+  const focusable = Array.from(
+    event.currentTarget.querySelectorAll<HTMLElement>(
+      'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  );
+
+  if (focusable.length === 0) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function addMinutes(date: Date, minutes: number): Date {
@@ -119,12 +149,15 @@ export function EventModal({
   isOpen,
   mode,
   event,
+  occurrenceDate,
   selectedDate,
   validationErrors,
   validateEvent,
   onSave,
+  onSaveOccurrence,
   onClose,
   onDelete,
+  onDeleteOccurrence,
   onClearValidationErrors,
 }: EventModalProps) {
   const titleId = useId();
@@ -134,6 +167,7 @@ export function EventModal({
   const startErrorId = useId();
   const endErrorId = useId();
   const categoryErrorId = useId();
+  const scopeGroupId = useId();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const wasOpenRef = useRef(false);
@@ -141,6 +175,14 @@ export function EventModal({
   const [errors, setErrors] = useState<ValidationResult['errors']>({});
   const [shouldValidateLive, setShouldValidateLive] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [recurrenceScope, setRecurrenceScope] = useState<'this' | 'all-future'>('this');
+
+  /**
+   * True when the user is editing an existing recurring event AND an occurrenceDate
+   * was supplied — enables per-occurrence scope routing (FR-21, FR-22).
+   */
+  const isRecurringEdit =
+    mode === 'edit' && Boolean(event) && event?.recurrence !== 'none' && Boolean(occurrenceDate);
 
   useEffect(() => {
     if (!isOpen) {
@@ -151,6 +193,7 @@ export function EventModal({
     setErrors(validationErrors ?? {});
     setShouldValidateLive(false);
     setIsDeleteConfirmOpen(false);
+    setRecurrenceScope('this');
     onClearValidationErrors?.();
   }, [event, isOpen, mode, onClearValidationErrors, selectedDate, validationErrors]);
 
@@ -190,10 +233,6 @@ export function EventModal({
       return 'No event is selected. Close this dialog and choose an event to edit.';
     }
 
-    if (mode === 'edit' && event?.recurrence !== 'none') {
-      return 'Phase 2 edits and deletes recurring events for the full series. Per-occurrence scope arrives in Phase 3.';
-    }
-
     if (selectedDate) {
       return `Selected date: ${formatDate(selectedDate, 'EEEE, MMMM d, yyyy')}.`;
     }
@@ -230,7 +269,13 @@ export function EventModal({
       return;
     }
 
-    const mutationResult = onSave(draft);
+    // Route to occurrence-aware save when editing a recurring occurrence (FR-21).
+    let mutationResult: EventMutationResult;
+    if (isRecurringEdit && onSaveOccurrence) {
+      mutationResult = onSaveOccurrence(draft, recurrenceScope);
+    } else {
+      mutationResult = onSave(draft);
+    }
 
     if (mutationResult.valid) {
       handleClose();
@@ -241,11 +286,19 @@ export function EventModal({
   };
 
   const handleDeleteConfirmed = () => {
-    if (!event || !onDelete) {
+    if (!event) {
       return;
     }
 
-    onDelete(event.id);
+    // Route to occurrence-aware delete when editing a recurring occurrence (FR-22).
+    if (isRecurringEdit && onDeleteOccurrence) {
+      onDeleteOccurrence(recurrenceScope);
+    } else if (onDelete) {
+      onDelete(event.id);
+    } else {
+      return;
+    }
+
     setIsDeleteConfirmOpen(false);
     handleClose();
   };
@@ -276,6 +329,8 @@ export function EventModal({
             if (eventObject.key === 'Escape' && !isDeleteConfirmOpen) {
               eventObject.preventDefault();
               handleClose();
+            } else {
+              trapFocus(eventObject);
             }
           }}
         >
@@ -434,15 +489,42 @@ export function EventModal({
                 </label>
               </div>
 
-              {formState.recurrence !== 'none' ? (
+              {/* Recurrence scope picker (FR-21) — shown only when editing a recurring occurrence */}
+              {isRecurringEdit ? (
+                <fieldset className={styles.scopePicker}>
+                  <legend className={styles.scopePickerLegend}>Apply changes to</legend>
+                  <label className={styles.scopeOption}>
+                    <input
+                      type="radio"
+                      className={styles.scopeOptionInput}
+                      name={scopeGroupId}
+                      value="this"
+                      checked={recurrenceScope === 'this'}
+                      onChange={() => setRecurrenceScope('this')}
+                    />
+                    This event
+                  </label>
+                  <label className={styles.scopeOption}>
+                    <input
+                      type="radio"
+                      className={styles.scopeOptionInput}
+                      name={scopeGroupId}
+                      value="all-future"
+                      checked={recurrenceScope === 'all-future'}
+                      onChange={() => setRecurrenceScope('all-future')}
+                    />
+                    All future events
+                  </label>
+                </fieldset>
+              ) : formState.recurrence !== 'none' ? (
                 <p className={styles.recurrenceNote}>
-                  Recurring events are stored canonically. In Phase 2, edits and deletes apply to the entire series.
+                  This event will repeat according to the selected pattern.
                 </p>
               ) : null}
 
               <div className={styles.actions}>
                 <div className={styles.leadingActions}>
-                  {mode === 'edit' && event && onDelete ? (
+                  {mode === 'edit' && event && (onDelete || onDeleteOccurrence) ? (
                     <button
                       type="button"
                       className={styles.deleteButton}
@@ -469,10 +551,10 @@ export function EventModal({
 
       <ConfirmDialog
         isOpen={isDeleteConfirmOpen}
-        title="Delete this event?"
+        title={isRecurringEdit ? 'Delete recurring event?' : 'Delete this event?'}
         message={
-          event?.recurrence !== 'none'
-            ? 'This recurring event will be deleted for the full series in Phase 2.'
+          isRecurringEdit
+            ? 'Choose which occurrences to remove.'
             : 'This action cannot be undone.'
         }
         details={
@@ -481,6 +563,9 @@ export function EventModal({
         confirmLabel="Delete event"
         cancelLabel="Keep event"
         tone="danger"
+        isRecurring={isRecurringEdit}
+        recurrenceScope={recurrenceScope}
+        onScopeChange={setRecurrenceScope}
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setIsDeleteConfirmOpen(false)}
       />

@@ -56,12 +56,17 @@ export default function App() {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedEventId, setSelectedEventId] = useState<string>();
+  // occurrenceDate tracks which specific occurrence was clicked; Task 3.2
+  // (event-workflow-engineer) will read this to drive the recurrence-scope prompt.
+  const [selectedOccurrenceDate, setSelectedOccurrenceDate] = useState<Date | undefined>();
   const {
     events,
     validationErrors,
     addEvent,
     updateEvent,
+    updateEventOccurrence,
     deleteEvent,
+    deleteEventOccurrence,
     clearValidationErrors,
     validateEvent,
   } = useEventStore();
@@ -122,6 +127,9 @@ export default function App() {
 
     setActiveDate(occurrenceDate);
     setSelectedDate(occurrenceDate);
+    // Thread the occurrence date so Task 3.2 can pass it to EventModal for the
+    // recurrence-scope prompt (edit this occurrence vs. all future).
+    setSelectedOccurrenceDate(occurrenceDate);
     setSelectedEventId(occurrence.sourceEventId);
     setModalMode('edit');
     clearValidationErrors();
@@ -132,6 +140,7 @@ export default function App() {
     setIsModalOpen(false);
     setSelectedEventId(undefined);
     setSelectedDate(undefined);
+    setSelectedOccurrenceDate(undefined);
     clearValidationErrors();
   };
 
@@ -181,6 +190,7 @@ export default function App() {
         isOpen={isModalOpen}
         mode={modalMode}
         event={modalMode === 'edit' ? selectedEvent : undefined}
+        occurrenceDate={modalMode === 'edit' ? selectedOccurrenceDate : undefined}
         selectedDate={selectedDate}
         validationErrors={validationErrors}
         validateEvent={validateEvent}
@@ -191,7 +201,18 @@ export default function App() {
 
           return addEvent(draft);
         }}
+        onSaveOccurrence={
+          modalMode === 'edit' && selectedEvent && selectedOccurrenceDate
+            ? (draft, scope) =>
+                updateEventOccurrence(selectedEvent.id, selectedOccurrenceDate, draft, scope)
+            : undefined
+        }
         onDelete={modalMode === 'edit' ? deleteEvent : undefined}
+        onDeleteOccurrence={
+          modalMode === 'edit' && selectedEvent && selectedOccurrenceDate
+            ? (scope) => deleteEventOccurrence(selectedEvent.id, selectedOccurrenceDate, scope)
+            : undefined
+        }
         onClose={handleModalClose}
         onClearValidationErrors={clearValidationErrors}
       />

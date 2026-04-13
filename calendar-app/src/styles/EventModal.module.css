@@ -153,6 +153,43 @@
   line-height: 1.5;
 }
 
+/* Recurrence scope picker — shown when editing a recurring event (FR-21, FR-22) */
+.scopePicker {
+  border: 1px solid #bfdbfe;
+  border-radius: 0.85rem;
+  background: #eff6ff;
+  padding: 0.75rem 0.95rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.scopePickerLegend {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #1d4ed8;
+  padding: 0 0.2rem;
+  margin-bottom: 0.2rem;
+}
+
+.scopeOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: #1e40af;
+  font-size: 0.9rem;
+}
+
+.scopeOptionInput {
+  cursor: pointer;
+  accent-color: #2563eb;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
 .actions {
   display: flex;
   justify-content: space-between;
